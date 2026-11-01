@@ -1,6 +1,41 @@
-from datetime import date
+from datetime import date, datetime
 
-from src.data import STORAGE_DAYS
+from data import ST_DELIVERY_NEW, ST_SALES_CHECK
+
+
+def today_iso():
+    return date.today().isoformat()
+
+
+def add_history(order, text):
+    order["history"].append(f"{datetime.now():%d.%m %H:%M}  {text}")
+
+
+def find_label(table, status):
+    for st, label in table:
+        if st == status:
+            return label
+    return None
+
+
+def order_in_status(data, order_id, status):
+    order = data["orders"].get(order_id)
+    if order is None or order["status"] != status:
+        print("Заказ уже обработан другим сотрудником, обновите список.")
+        return None
+    return order
+
+
+def available_lots(data):
+    reserved = {}
+    for order in data["orders"].values():
+        if order["reserved"]:
+            for p in order["picks"]:
+                reserved[p["lot_id"]] = reserved.get(p["lot_id"], 0) + p["qty"]
+    return [
+        dict(lot, qty=lot["qty"] - reserved.get(lot["lot_id"], 0))
+        for lot in data["stock_lots"]
+    ]
 
 
 def check_stock_availability(lines, stock_lots):
@@ -33,13 +68,20 @@ def show_max_available(max_available, products):
 
 
 def create_order(data, client_id, lines, delivery_type):
-    order_id = len(data["orders"]) + 1
+    order_id = max(data["orders"]) + 1 if data["orders"] else 1
     order = {
         "order_id": order_id,
         "client_id": client_id,
         "delivery_type": delivery_type,
-        "created": date(2026, 11, 1),
+        "created": today_iso(),
         "status": "создан",
+        "history": [],
+        "picks": [],
+        "reserved": False,
+        "clarification": "",
+        "ready_date": None,
+        "delivery_date": None,
+        "delivery_id": None,
     }
     items = [
         {
@@ -53,29 +95,34 @@ def create_order(data, client_id, lines, delivery_type):
     data["orders"][order_id] = order
     data["order_items"].extend(items)
     total = sum(i["qty"] * i["price"] for i in items)
+    add_history(order, "заказ создан клиентом")
     print(f"Сформирован заказ №{order_id}, сумма {total:,.2f} руб.")
     return order, items
 
 
 def pass_info_to_sales(order):
-    order["status"] = "передан в отдел продаж"
+    order["status"] = ST_SALES_CHECK
+    add_history(order, "информация передана в отдел продаж")
     print(f"Информация по заказу №{order['order_id']} передана в отдел продаж")
 
 
 def notify_client_ready(client, order):
+    add_history(order, "клиент уведомлён: заказ готов к выдаче")
     print(
-        f"Клиент «{client['name']}» уведомлён ({client['phone']}): "
-        f"заказ №{order['order_id']} готов, хранение {STORAGE_DAYS} дн."
+        f"Клиент «{client['name']}» уведомлён ({client['phone'] or 'телефон не указан'}): "
+        f"заказ №{order['order_id']} готов"
     )
 
 
 def agree_delivery_date(client, order, delivery_date):
+    order["delivery_date"] = delivery_date
+    add_history(order, f"с клиентом согласована дата доставки {delivery_date}")
     print(f"С клиентом «{client['name']}» согласована дата доставки: {delivery_date}")
-    return delivery_date
 
 
 def pass_info_to_delivery(order):
-    order["status"] = "передан в доставку"
+    order["status"] = ST_DELIVERY_NEW
+    add_history(order, "информация передана в отдел доставки")
     print("Информация передана в отдел доставки")
 
 
@@ -83,8 +130,13 @@ def update_stock(stock_lots, picks):
     taken = {}
     for p in picks:
         taken[p["lot_id"]] = taken.get(p["lot_id"], 0) + p["qty"]
-    updated = [
+    return [
         dict(lot, qty=lot["qty"] - taken.get(lot["lot_id"], 0)) for lot in stock_lots
     ]
+
+
+def write_off_order(data, order):
+    data["stock_lots"] = update_stock(data["stock_lots"], order["picks"])
+    order["reserved"] = False
+    add_history(order, "складские остатки обновлены")
     print("Складские остатки обновлены")
-    return updated
