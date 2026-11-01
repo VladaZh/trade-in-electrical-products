@@ -137,8 +137,12 @@ def ask_task_choice(count, extras):
         print("Нет такой команды.")
 
 
-def run_console_loop(path, title, ctx, tasks_fn, perform_fn, extras):
+def run_console_loop(
+    path, title, tasks_fn, perform_fn, extras, on_refresh=None, ctx=None
+):
     while True:
+        if on_refresh is not None:
+            on_refresh(path, ctx)
         data = read_state(path)
         print(f"\n=========== {title} ===========")
         tasks = tasks_fn(data, ctx)

@@ -14,7 +14,6 @@ from data import (
     ST_DECLINED,
     ST_DELIVERED,
     ST_DELIVERY_LOADED,
-    ST_DELIVERY_NEW,
     ST_DELIVERY_RECEIVED,
     ST_DONE,
     ST_RETURNING,
@@ -71,10 +70,7 @@ def delivery_step_action(data, order_id, status):
         return
     delivery = data["deliveries"].get(order["delivery_id"])
     client = data["clients"][order["client_id"]]
-    if status == ST_DELIVERY_NEW:
-        receive_delivery_info(data, order, order["delivery_date"])
-        order["status"] = ST_DELIVERY_RECEIVED
-    elif status == ST_DELIVERY_RECEIVED:
+    if status == ST_DELIVERY_RECEIVED:
         load_goods(order)
         order["status"] = ST_DELIVERY_LOADED
     elif status == ST_DELIVERY_LOADED:
@@ -126,5 +122,5 @@ def delivery_show_orders(path):
 def run_delivery_console(path):
     extras = (("o", "все заказы", delivery_show_orders),)
     return run_console_loop(
-        path, "ОТДЕЛ ДОСТАВКИ", None, delivery_tasks, delivery_perform, extras
+        path, "ОТДЕЛ ДОСТАВКИ", delivery_tasks, delivery_perform, extras
     )

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from data import ST_DELIVERY_NEW, ST_SALES_CHECK
+from data import ST_DELIVERY_NEW, ST_SALES_CHECK, STORAGE_DAYS
 
 
 def today_iso():
@@ -106,11 +106,46 @@ def pass_info_to_sales(order):
     print(f"Информация по заказу №{order['order_id']} передана в отдел продаж")
 
 
-def notify_client_ready(client, order):
-    add_history(order, "клиент уведомлён: заказ готов к выдаче")
+def send_message(data, client_id, order_id, text):
+    data.setdefault("messages", []).append(
+        {
+            "client_id": client_id,
+            "order_id": order_id,
+            "text": text,
+            "time": f"{datetime.now():%d.%m %H:%M}",
+            "read": False,
+        }
+    )
+
+
+def has_unread(data, client_id):
+    return any(
+        m["client_id"] == client_id and not m["read"] for m in data.get("messages", [])
+    )
+
+
+def pop_messages(data, client_id):
+    unread = [
+        m
+        for m in data.get("messages", [])
+        if m["client_id"] == client_id and not m["read"]
+    ]
+    for m in unread:
+        m["read"] = True
+    return unread
+
+
+def notify_client_ready(data, client, order):
+    add_history(order, "клиенту отправлено сообщение: заказ готов к выдаче")
+    send_message(
+        data,
+        client["client_id"],
+        order["order_id"],
+        f"Заказ №{order['order_id']} собран и готов к выдаче на складе. "
+        f"Срок хранения - {STORAGE_DAYS} дн. Приходите за заказом.",
+    )
     print(
-        f"Клиент «{client['name']}» уведомлён ({client['phone'] or 'телефон не указан'}): "
-        f"заказ №{order['order_id']} готов"
+        f"Клиенту «{client['name']}» отправлено сообщение о готовности заказа №{order['order_id']}"
     )
 
 

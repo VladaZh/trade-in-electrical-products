@@ -6,7 +6,7 @@ from console import (
     show_all_orders,
     show_order,
 )
-from data import ST_CLARIFY, ST_SALES_CHECK, ST_WH_NEW
+from data import ST_CLARIFY, ST_SALES_CHECK, ST_WH_RECEIVED
 from storage import read_state, run_locked
 
 
@@ -33,7 +33,7 @@ def confirm_data(order):
 
 
 def send_info_to_warehouse(order):
-    order["status"] = ST_WH_NEW
+    order["status"] = ST_WH_RECEIVED
     add_history(order, "информация отправлена на склад")
     print("Информация отправлена на склад отделом продаж")
 
@@ -89,6 +89,4 @@ def sales_show_orders(path):
 
 def run_sales_console(path):
     extras = (("o", "все заказы", sales_show_orders),)
-    return run_console_loop(
-        path, "ОТДЕЛ ПРОДАЖ", None, sales_tasks, sales_perform, extras
-    )
+    return run_console_loop(path, "ОТДЕЛ ПРОДАЖ", sales_tasks, sales_perform, extras)

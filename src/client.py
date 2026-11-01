@@ -7,9 +7,11 @@ from app import (
     check_stock_availability,
     create_order,
     find_label,
+    has_unread,
     order_in_status,
     pass_info_to_delivery,
     pass_info_to_sales,
+    pop_messages,
     reject_order,
     show_max_available,
 )
@@ -31,8 +33,10 @@ from data import (
     ST_DECLINED,
     ST_DELIVERED,
     ST_DELIVERY_DATE,
+    ST_DELIVERY_RECEIVED,
     ST_SALES_CHECK,
 )
+from delivery import receive_delivery_info
 from storage import read_state, run_locked
 
 CLIENT_TASKS = (
@@ -51,6 +55,19 @@ def add_client_action(data, name, phone, address):
         "address": address,
     }
     return client_id
+
+
+def show_order_statuses(data, client_id):
+    orders = [
+        data["orders"][oid]
+        for oid in sorted(data["orders"])
+        if data["orders"][oid]["client_id"] == client_id
+    ]
+    if not orders:
+        return
+    print("\n  Статусы ваших заказов:")
+    for o in orders:
+        print(f"    №{o['order_id']:<3} {o['delivery_type']:<10} {o['status']}")
 
 
 def submit_order_action(data, client_id, lines, delivery_type):
@@ -82,6 +99,8 @@ def agree_date_action(data, order_id, delivery_date):
         return
     agree_delivery_date(data["clients"][order["client_id"]], order, delivery_date)
     pass_info_to_delivery(order)
+    receive_delivery_info(data, order, delivery_date)
+    order["status"] = ST_DELIVERY_RECEIVED
 
 
 def decide_action(data, order_id, accepted):
@@ -188,6 +207,19 @@ def client_show_orders(path, client_id):
     show_all_orders(read_state(path), client_id)
 
 
+def read_messages_action(data, client_id):
+    for m in pop_messages(data, client_id):
+        print(f"\n({m['time']}), заказ №{m['order_id']}:")
+        print(f"      {m['text']}")
+
+
+def client_on_refresh(path, client_id):
+    data = read_state(path)
+    if has_unread(data, client_id):
+        run_locked(path, read_messages_action, client_id)
+    show_order_statuses(data, client_id)
+
+
 def client_perform(path, order_id):
     data = read_state(path)
     order = data["orders"][order_id]
@@ -222,5 +254,11 @@ def run_client_console(path):
         ("o", "мои заказы", client_show_orders),
     )
     return run_console_loop(
-        path, f"КЛИЕНТ: {name}", client_id, client_tasks, client_perform, extras
+        path,
+        f"КЛИЕНТ: {name}",
+        client_tasks,
+        client_perform,
+        extras,
+        ctx=client_id,
+        on_refresh=client_on_refresh,
     )

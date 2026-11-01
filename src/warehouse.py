@@ -5,6 +5,7 @@ from app import (
     available_lots,
     notify_client_ready,
     order_in_status,
+    send_message,
     today_iso,
     write_off_order,
 )
@@ -22,7 +23,6 @@ from data import (
     ST_PICKUP_READY,
     ST_RECEIVED,
     ST_WH_BATCH,
-    ST_WH_DOCS,
     ST_WH_NEW,
     ST_WH_RECEIVED,
     STORAGE_DAYS,
@@ -112,10 +112,7 @@ def warehouse_step_action(data, order_id, status):
     order = order_in_status(data, order_id, status)
     if order is None:
         return
-    if status == ST_WH_NEW:
-        receive_order_info(order)
-        order["status"] = ST_WH_RECEIVED
-    elif status == ST_WH_RECEIVED:
+    if status == ST_WH_RECEIVED:
         items = [i for i in data["order_items"] if i["order_id"] == order_id]
         picks, complete = form_batch(items, available_lots(data))
         if not complete:
@@ -132,18 +129,36 @@ def warehouse_step_action(data, order_id, status):
         order["status"] = ST_WH_BATCH
     elif status == ST_WH_BATCH:
         create_shipping_documents(data, order, order["picks"])
-        order["status"] = ST_WH_DOCS
-    elif status == ST_WH_DOCS:
-        report_order_ready(order)
+        report_order_ready(order)  # после документов - автоматически
         if order["delivery_type"] == "самовывоз":
-            notify_client_ready(data["clients"][order["client_id"]], order)
+            notify_client_ready(data, data["clients"][order["client_id"]], order)
             order["ready_date"] = today_iso()
             order["status"] = ST_PICKUP_READY
         else:
             add_history(order, "ожидается согласование даты доставки с клиентом")
+            send_message(
+                data,
+                order["client_id"],
+                order_id,
+                f"Заказ №{order_id} собран. Согласуйте дату доставки ",
+            )
             order["status"] = ST_DELIVERY_DATE
     elif status == ST_DISASSEMBLY_DOCS:
         disassemble_order(order)
+
+
+def auto_receive_action(data):
+    for oid in sorted(data["orders"]):
+        order = data["orders"][oid]
+        if order["status"] == ST_WH_NEW:
+            receive_order_info(order)
+            order["status"] = ST_WH_RECEIVED
+
+
+def warehouse_on_refresh(path, ctx):
+    data = read_state(path)
+    if any(o["status"] == ST_WH_NEW for o in data["orders"].values()):
+        run_locked(path, auto_receive_action)
 
 
 def expire_action(data, order_id):
@@ -194,11 +209,11 @@ def warehouse_perform(path, order_id):
         run_locked(path, warehouse_step_action, order_id, status)
 
 
-def warehouse_show_stock(path):
+def warehouse_show_stock(path, ctx):
     show_stock_lots(read_state(path))
 
 
-def warehouse_show_orders(path):
+def warehouse_show_orders(path, ctx):
     show_all_orders(read_state(path))
 
 
@@ -207,6 +222,4 @@ def run_warehouse_console(path):
         ("s", "остатки по партиям", warehouse_show_stock),
         ("o", "все заказы", warehouse_show_orders),
     )
-    return run_console_loop(
-        path, "СКЛАД", None, warehouse_tasks, warehouse_perform, extras
-    )
+    return run_console_loop(path, "СКЛАД", warehouse_tasks, warehouse_perform, extras)
