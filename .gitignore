@@ -3,7 +3,6 @@ __pycache__/
 *.py[codz]
 *$py.class
 
-# mypy
 .mypy_cache/
 .dmypy.json
 dmypy.json
@@ -15,3 +14,13 @@ dmypy.json
 .coverage
 
 .idea/
+
+*.class
+target/
+build/
+out/
+
+data/state.json
+data/state.json.lock
+data/state.json.tmp
+scenarios/scenario_state/
