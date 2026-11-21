@@ -20,7 +20,6 @@ target/
 build/
 out/
 
-data/state.json
-data/state.json.lock
-data/state.json.tmp
-scenarios/scenario_state/
+python/data/state.json
+python/data/state.json.lock
+python/data/state.json.tmp
