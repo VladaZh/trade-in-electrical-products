@@ -103,12 +103,9 @@ public class StateStore {
                 return lock;
             } catch (FileAlreadyExistsException e) {
                 if (System.currentTimeMillis() - started > Config.LOCK_TIMEOUT_MS) {
-                    try {
-                        Files.deleteIfExists(lock);
-                    } catch (IOException ignored) {
-
-                    }
-                    started = System.currentTimeMillis();
+                    throw new IllegalStateException(
+                            "Не удалось получить блокировку: превышено время ожидания"
+                    );
                 }
                 sleep(50);
             } catch (IOException e) {
