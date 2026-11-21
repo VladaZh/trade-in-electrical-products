@@ -54,7 +54,7 @@ private static final Set<String> NO_WORDS = Set.of("нет", "н", "n", "no");
 ## Тестовые данные
 Перед каждым новым сценарием запустить из папки src/java команду
 ```Bash
-java -cp out wholesale.Main reset
+java -Dfile.encoding=UTF-8 -cp out wholesale.Main reset
 ```
 
 ## Пример работы: самовывоз (ввод и ожидаемый вывод)
