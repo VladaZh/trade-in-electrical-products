@@ -50,11 +50,16 @@ public class SalesConsole extends RoleConsole {
             store.runLockedVoid(s -> s.orderInStatus(orderId, OrderStatus.SALES_CHECK).ifPresent(o -> {
                 o.confirmData();
                 o.sendInfoToWarehouse();
+                Out.println("Корректность данных подтверждена");
+                Out.println("Информация отправлена на склад отделом продаж");
             }));
         } else {
             String text = io.askNonEmpty("  Что нужно уточнить у клиента: ");
             store.runLockedVoid(s -> s.orderInStatus(orderId, OrderStatus.SALES_CHECK)
-                    .ifPresent(o -> o.clarifyWithClient(text)));
+                    .ifPresent(o -> {
+                        o.clarifyWithClient(text);
+                        Out.println("Запрос отправлен клиенту, ожидаем его ответа");
+                    }));
         }
     }
 }

@@ -64,6 +64,7 @@ public class WarehouseConsole extends RoleConsole {
                     if (order.getStatus() == OrderStatus.WH_NEW) {
                         order.receiveOrderInfo();
                         order.setStatus(OrderStatus.WH_RECEIVED);
+                        Out.println("Склад получил информацию о заказе №" + order.getOrderId());
                     }
                 }
             });
@@ -82,7 +83,10 @@ public class WarehouseConsole extends RoleConsole {
                     + ", срок хранения: " + Config.STORAGE_DAYS + " дн.");
             if (io.askYesNo("  Срок хранения заказа вышел?")) {
                 store.runLockedVoid(s -> s.orderInStatus(orderId, OrderStatus.PICKUP_READY)
-                        .ifPresent(Order::createDisassemblyDocuments));
+                .ifPresent(o -> {
+                    o.createDisassemblyDocuments();
+                    Out.println("Оформлены документы на расформирование заказа на складе");
+                }));
             } else if (io.askYesNo("  Клиент пришёл?")) {
                 store.runLockedVoid(s -> issueOrder(s, orderId));
             } else {
@@ -99,7 +103,11 @@ public class WarehouseConsole extends RoleConsole {
     private void issueOrder(ShopState state, int orderId) {
         state.orderInStatus(orderId, OrderStatus.PICKUP_READY).ifPresent(order -> {
             order.issue();
+            Out.println("Заказ выдан клиенту со склада");
+
             order.complete();
+            Out.println("Заказ завершён");
+
             state.warehouse().writeOff(order);
         });
     }
@@ -117,10 +125,18 @@ public class WarehouseConsole extends RoleConsole {
             case WH_BATCH:
                 state.createShippingDocuments(order, order.getPicks());
                 order.reportReady();
+                Out.println("Заказ №" + order.getOrderId() + " готов на складе");
+
                 order.onShippingDocumentsReady(state, state.client(order.getClientId()));
+
+                if (Order.PICKUP.equals(order.deliveryType())) {
+                    Out.println("Клиенту «" + state.client(order.getClientId()).getName()
+                            + "» отправлено сообщение о готовности заказа №" + order.getOrderId());
+                }
                 break;
             case DISASSEMBLY_DOCS:
                 order.disassemble();
+                Out.println("Заказ расформирован, товар возвращён на места хранения на складе");
                 break;
             default:
                 break;

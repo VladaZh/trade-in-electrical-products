@@ -81,6 +81,7 @@ public class DeliveryConsole extends RoleConsole {
         switch (status) {
             case DELIVERY_RECEIVED:
                 order.loadGoods();
+                Out.println("Наступила дата доставки; товар загружен");
                 break;
             case DELIVERY_LOADED:
                 delivery.deliverGoods(order, client.getAddress());
@@ -95,6 +96,7 @@ public class DeliveryConsole extends RoleConsole {
                 break;
             case RETURNING:
                 order.returnGoodsToWarehouse();
+                Out.println("Товар возвращён на склад");
                 break;
             default:
                 break;

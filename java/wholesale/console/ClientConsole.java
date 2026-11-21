@@ -150,7 +150,10 @@ public class ClientConsole extends RoleConsole {
             return;
         }
         Out.println();
-        store.runLocked(s -> submitOrder(s, lines, deliveryType));
+        Integer orderId = store.runLocked(s -> submitOrder(s, lines, deliveryType));
+        if (orderId != null) {
+            Out.println("Информация по заказу №" + orderId + " передана в отдел продаж");
+        }
     }
 
     private Map<Integer, Long> inputLines(Map<Integer, Product> products) {
@@ -225,20 +228,29 @@ public class ClientConsole extends RoleConsole {
         state.orderInStatus(orderId, OrderStatus.CLARIFY).ifPresent(order -> {
             state.client(order.getClientId()).applyCorrection(correction.get("phone"), correction.get("address"));
             order.resubmitAfterCorrection(correction);
+            Out.println("Данные отправлены в отдел продаж на повторную проверку");
         });
     }
 
     private void agreeDate(ShopState state, int orderId, String date) {
         state.orderInStatus(orderId, OrderStatus.DELIVERY_DATE).ifPresent(order -> {
-            order.agreeDeliveryDate(state.client(order.getClientId()), date);
+            order.agreeDeliveryDate(date);
+            Out.println("С клиентом «" + state.client(order.getClientId()).getName()
+                    + "» согласована дата доставки: " + date);
+
             order.passInfoToDelivery();
+            Out.println("Информация передана в отдел доставки");
+
             state.receiveDeliveryInfo(order, date);
             order.setStatus(OrderStatus.DELIVERY_RECEIVED);
         });
     }
 
     private void decide(ShopState state, int orderId, boolean accepted) {
-        state.orderInStatus(orderId, OrderStatus.DELIVERED).ifPresent(order -> order.decide(accepted));
+        state.orderInStatus(orderId, OrderStatus.DELIVERED).ifPresent(order -> {
+            order.decide(accepted);
+            Out.println("Решение передано в отдел доставки");
+        });
     }
 
     private void readMessages(ShopState state) {
