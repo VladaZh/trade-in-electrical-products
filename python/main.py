@@ -6,7 +6,7 @@ from sales_department import run_sales_console
 from storage import init_state, state_path
 from warehouse import run_warehouse_console
 
-USAGE = """Использование: python -m system.main <роль>
+USAGE = """Использование: python -m main <роль>
   client     - консоль клиента
   sales      - консоль отдела продаж
   warehouse  - консоль склада
