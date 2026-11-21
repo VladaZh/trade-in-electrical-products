@@ -19,21 +19,21 @@ cd java
 Компиляция файлов
 ```Bash
 mkdir -p out
-javac -d out $(find wholesale -name "*.java")
+javac -encoding UTF-8 --release 17 -d out $(find wholesale -name "*.java")
 ```
 
 Сброс состояния перед запусками
 ```Bash
-java -cp out wholesale.Main reset
+java -Dfile.encoding=UTF-8 -cp out wholesale.Main reset
 ```
 
 Для запуска клиента, отдела продаж, склада и отдела доставки необходимо открыть разные консоли (всего 4). 
 
 ```bash
-java -cp out wholesale.Main client
-java -cp out wholesale.Main sales
-java -cp out wholesale.Main warehouse
-java -cp out wholesale.Main delivery
+java -Dfile.encoding=UTF-8 -cp out wholesale.Main client
+java -Dfile.encoding=UTF-8 -cp out wholesale.Main sales
+java -Dfile.encoding=UTF-8 -cp out wholesale.Main warehouse
+java -Dfile.encoding=UTF-8 -cp out wholesale.Main delivery
 ```
 
 ### Управление в консоли
